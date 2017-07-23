@@ -255,18 +255,18 @@ static void TaskTela(void *p_arg){
 	int j = 0;
 	OS_ERR err_os;
 	while(1){
-		DeleteObject(ship);
+//		DeleteObject(ship);
 		ship = GUI_CreateImage("nave.bmp",60,60);
-		DeleteObject(fundo);
-		fundo = GUI_CreateImage( "fundo.bmp", 780, 556);
 		DeleteObject(enemy);
 		enemy = GUI_CreateImage("inimigo.bmp",30,30);
-		GUI_DrawImage(fundo,0,0,780 ,556,5);
+		DeleteObject(fundo);
 		OSSemPend((OS_SEM		*)&SemaforoTela,
 				  (OS_TICK		*) 0,
 				  OS_OPT_PEND_BLOCKING,
 				  (CPU_TS		*) 0,
 				  (OS_ERR		*)&err_os);
+//		fundo = GUI_CreateImage( "fundo.bmp", 780, 556);
+//		GUI_DrawImage(fundo,0,0,780 ,556,5);
 		for (i = 0;i< Linhas;i++){
 			for (j = 0;j < Colunas;j++){
 				switch (LABIRINTO[i][j]) {
@@ -388,12 +388,22 @@ static  void  App_TaskStart (void  *p_arg)
     // Loop de mensagens para interface grafica
     while (1)
    		 {
-			PeekMessage(&Msg, 0, 0, 0, PM_REMOVE);
+		OSSemPend((OS_SEM		*)&SemaforoTela,
+				  (OS_TICK		*) 0,
+				  OS_OPT_PEND_BLOCKING,
+				  (CPU_TS		*) 0,
+				  (OS_ERR		*)&err_os);
+		fundo = GUI_CreateImage( "fundo.bmp", 780, 556);
+		GUI_DrawImage(fundo,0,0,780 ,556,5);
+		OSSemPost((OS_SEM		*)&SemaforoTela,
+					OS_OPT_POST_1,
+					(OS_ERR		*)&err_os);
+			 PeekMessage(&Msg, 0, 0, 0, PM_REMOVE);
 
 			TranslateMessage(&Msg);
 			DispatchMessage(&Msg);
 
-			OSTimeDlyHMSM(0,0,0,20,OS_OPT_TIME_DLY, &err_os);
+			OSTimeDlyHMSM(0,0,0,40,OS_OPT_TIME_DLY, &err_os);
     }
 
 	printf("\n fim do loop de msg");
