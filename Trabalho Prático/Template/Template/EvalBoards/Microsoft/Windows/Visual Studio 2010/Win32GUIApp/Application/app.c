@@ -8,7 +8,7 @@
 *
 * Arquivo			: app.c
 * Versao			: 
-* Aluno(s)			:  OSCAR F C LONGUINHO / LUCAS
+* Aluno(s)			:  OSCAR F C LONGUINHO / LUCAS MANOEL
 * Data				:  
 * Descricao			: Desenvolver o Jogo da Nave
 *********************************************************************************************************
