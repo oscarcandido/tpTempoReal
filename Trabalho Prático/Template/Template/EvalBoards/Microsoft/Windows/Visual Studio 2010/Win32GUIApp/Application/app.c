@@ -359,7 +359,7 @@ static  void  App_TaskStart (void  *p_arg)
 				 (CPU_CHAR		*)"TaskTela",
 				 (OS_TASK_PTR	 ) TaskTela,
 				 (void			*) 0,
-				 (OS_PRIO		 ) 1,
+				 (OS_PRIO		 ) 10,
 				 (CPU_STK		*)&TaskTelaStk[0],
 				 (CPU_STK_SIZE   ) TSKTELA_STK_SIZE / 10u,
 				 (CPU_STK_SIZE	 ) TSKTELA_STK_SIZE,
