@@ -42,6 +42,7 @@
 #define TSKSHIP_STK_SIZE 2000
 #define TSKENEMY_STK_SIZE 2000
 #define TSKTELA_STK_SIZE 2000
+#define TSKSHOT_STK_SIZE 2000
 #define NumEnemy 5
 #define Linhas 38
 #define Colunas 23
@@ -82,6 +83,9 @@ static  OS_TCB   AppStartTaskTCB;
 static  CPU_STK  AppStartTaskStk[APP_TASK_START_STK_SIZE];
 static	OS_TCB   TaskTelaTcb;
 static  CPU_STK	 TaskTelaStk[TSKTELA_STK_SIZE];
+static  OS_TCB	 TaskShotTcb;
+static  CPU_STK  TaskShotStk[TSKSHOT_STK_SIZE];
+//Semáforos
 static	OS_SEM	 SemaforoTela;
 static  OS_SEM	 SemaforoShipPos;
 static  OS_SEM	 SemaforoLabrinto;
@@ -89,6 +93,7 @@ static  OS_SEM	 SemaforoLabrinto;
 HBITMAP * fundo;
 HBITMAP * ship;
 HBITMAP * enemy;
+HBITMAP * missil;
 int imgXPos, imgYPos;
 int ShipPos = 18;
 /*
@@ -265,22 +270,31 @@ static void TaskTela(void *p_arg){
 				  OS_OPT_PEND_BLOCKING,
 				  (CPU_TS		*) 0,
 				  (OS_ERR		*)&err_os);
-//		fundo = GUI_CreateImage( "fundo.bmp", 780, 556);
-//		GUI_DrawImage(fundo,0,0,780 ,556,5);
 		for (i = 0;i< Linhas;i++){
 			for (j = 0;j < Colunas;j++){
+				OSSemPend((OS_SEM		*)&SemaforoLabrinto,
+						 (OS_TICK		*) 0,
+						 OS_OPT_PEND_BLOCKING,
+						 (CPU_TS		*) 0,
+						 (OS_ERR        *)&err_os);
 				switch (LABIRINTO[i][j]) {
 				case 1 : GUI_DrawImage(ship,i * 20,LinhaNave*20,60,60,1);
+					break;
+				case 2 : GUI_DrawImage(missil,i * 20,j*20,13,20,1);
 					break;
 				case 3 : GUI_DrawImage(enemy,i * 20,j*20,30,30,1);
 					break;
 				}
+				OSSemPost((OS_SEM		*)&SemaforoLabrinto,
+						  OS_OPT_POST_1,
+						  (OS_ERR		*)&err_os);
 			}
 		}
 		OSSemPost((OS_SEM		*)&SemaforoTela,
 					OS_OPT_POST_1,
 					(OS_ERR		*)&err_os);
-		OSTimeDlyHMSM(0,0,0,10,OS_OPT_TIME_DLY,&err_os);
+	//	OSTimeDlyHMSM(0,0,0,10,OS_OPT_TIME_DLY,&err_os);
+		OSTimeDly(10, OS_OPT_TIME_DLY, &err_os);
 
 		
 	}
@@ -325,6 +339,76 @@ static  void MoveShip(int dir){
 	OSSemPost((OS_SEM		*)&SemaforoShipPos,
 			  OS_OPT_POST_1,
 			  (OS_ERR		*)&err_os);
+}
+/*
+*********************************************************************************************************
+*                                           TaskShot()
+*
+* Description : Tiro da nave.
+*
+* Arguments   : p_arg       Argumento passado a 'OSTaskCreate()'.
+*
+* Returns     : none.
+*
+* Created by  : CriaShot(int pos).
+*
+*********************************************************************************************************
+*/
+static void TaskShot(void *p_arg)
+{
+	OS_ERR err_os;
+	int pos = ShipPos;// *((int *)p_arg);
+	int y = LinhaNave-1;
+//	printf("\n Shippos %d \n",pos);
+	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
+				(OS_TICK		*) 0,
+				OS_OPT_PEND_BLOCKING,
+				(CPU_TS		*) 0,
+				(OS_ERR        *)&err_os);
+	while (y >= 0){//((LABIRINTO[pos][y] != 5) || (LABIRINTO[pos][y]!= 1)){
+		LABIRINTO[pos][y] = 0;
+		y--;
+		LABIRINTO[pos][y] = 2;
+		printf("\npos tiro %d",y);
+		OSSemPost((OS_SEM		*)&SemaforoLabrinto,
+				OS_OPT_POST_1,
+				(OS_ERR		*)&err_os);
+	 // OSTimeDlyHMSM(0,0,0,10,OS_OPT_TIME_DLY, &err_os);
+	OSTimeDly(100, OS_OPT_TIME_DLY, &err_os);
+	}
+//	OSTaskDel((OS_TCB *)&TaskShotTcb,&err_os);
+
+}
+/*
+*********************************************************************************************************
+*                                           CriaShot()
+*
+* Description : Cria a tarefa de um tiro da nave
+*
+* Arguments   :  pos posição x do disparo
+*
+* Returns     : none.
+*
+*
+*********************************************************************************************************
+*/
+
+static  void CriaShot(int pos){
+	OS_ERR err_os;
+	OSTaskCreate((OS_TCB		*)&TaskShotTcb,
+				 (CPU_CHAR		*)"Task Shot",
+				 (OS_TASK_PTR	 ) TaskShot,
+				 (void			*) &pos,
+				 (OS_PRIO		 ) 10,
+				 (CPU_STK		*)&TaskShotStk[0],
+				 (CPU_STK_SIZE   ) TSKTELA_STK_SIZE / 10u,
+				 (CPU_STK_SIZE	 ) TSKTELA_STK_SIZE,
+				 (OS_MEM_QTY	 ) 0u,
+				 (OS_TICK		 ) 0u,
+				 (CPU_TS		*) 0,
+				 (OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+				 (OS_ERR	    *)&err_os);
+	
 }
 /*
 *********************************************************************************************************
@@ -383,6 +467,8 @@ static  void  App_TaskStart (void  *p_arg)
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 			  OS_OPT_POST_1,
 			  (OS_ERR		*)&err_os);
+	//Carrega imagem Missil
+	missil = GUI_CreateImage("missil.bmp",13,20);
 	printf("\n Inicio do loop de msg");
 
     // Loop de mensagens para interface grafica
@@ -459,6 +545,15 @@ LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			case VK_UP:
 			  // Insert code here to process the UP ARROW key
 			  // ...
+				OSSemPend((OS_SEM		*)&SemaforoShipPos,
+						 (OS_TICK		*) 0,
+						 OS_OPT_PEND_BLOCKING,
+						 (CPU_TS		*) 0,
+						 (OS_ERR        *)&err_os);
+				CriaShot(ShipPos);
+				OSSemPost((OS_SEM		*)&SemaforoShipPos,
+						  OS_OPT_POST_1,
+						  (OS_ERR		*)&err_os);
 				imgYPos-=20;
 			  break;
 
