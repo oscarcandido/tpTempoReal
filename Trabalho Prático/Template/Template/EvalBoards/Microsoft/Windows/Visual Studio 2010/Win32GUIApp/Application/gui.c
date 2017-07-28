@@ -143,7 +143,7 @@ int GUI_Init_Default()
 	wc.hInstance     = NULL;
     wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
     wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+3);
     wc.lpszMenuName  = NULL;
     wc.lpszClassName = "Trabalho BCC722";
     wc.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);

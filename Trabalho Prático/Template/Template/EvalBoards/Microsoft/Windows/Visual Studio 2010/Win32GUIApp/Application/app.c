@@ -83,8 +83,6 @@ static  OS_TCB   AppStartTaskTCB;
 static  CPU_STK  AppStartTaskStk[APP_TASK_START_STK_SIZE];
 static	OS_TCB   TaskTelaTcb;
 static  CPU_STK	 TaskTelaStk[TSKTELA_STK_SIZE];
-static  OS_TCB	 TaskShotTcb;
-static  CPU_STK  TaskShotStk[TSKSHOT_STK_SIZE];
 //Semáforos
 static	OS_SEM	 SemaforoTela;
 static  OS_SEM	 SemaforoShipPos;
@@ -115,6 +113,21 @@ int LABIRINTO[Linhas][Colunas] = {	 { 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
 									,{ 5, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}//LADO ESQUERO INFERIOR
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
@@ -122,31 +135,16 @@ int LABIRINTO[Linhas][Colunas] = {	 { 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5} //LADO DIREITO INFERIOR
+									,{ 5, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5} //LADO DIREITO INFERIOR
 									,{ 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}
    };
 
@@ -260,11 +258,12 @@ static void TaskTela(void *p_arg){
 	int j = 0;
 	OS_ERR err_os;
 	while(1){
-//		DeleteObject(ship);
 		ship = GUI_CreateImage("nave.bmp",60,60);
 		DeleteObject(enemy);
 		enemy = GUI_CreateImage("inimigo.bmp",30,30);
 		DeleteObject(fundo);
+		DeleteObject(missil);
+		missil = GUI_CreateImage("missil.bmp",60,20);
 		OSSemPend((OS_SEM		*)&SemaforoTela,
 				  (OS_TICK		*) 0,
 				  OS_OPT_PEND_BLOCKING,
@@ -280,7 +279,7 @@ static void TaskTela(void *p_arg){
 				switch (LABIRINTO[i][j]) {
 				case 1 : GUI_DrawImage(ship,i * 20,LinhaNave*20,60,60,1);
 					break;
-				case 2 : GUI_DrawImage(missil,i * 20,j*20,13,20,1);
+				case 2 : GUI_DrawImage(missil,i * 20,j*20,60,20,1);
 					break;
 				case 3 : GUI_DrawImage(enemy,i * 20,j*20,30,30,1);
 					break;
@@ -342,7 +341,7 @@ static  void MoveShip(int dir){
 }
 /*
 *********************************************************************************************************
-*                                           TaskShot()
+*                                           Shot()
 *
 * Description : Tiro da nave.
 *
@@ -354,62 +353,35 @@ static  void MoveShip(int dir){
 *
 *********************************************************************************************************
 */
-static void TaskShot(void *p_arg)
+static void Shot(int pos)
 {
 	OS_ERR err_os;
-	int pos = ShipPos;// *((int *)p_arg);
 	int y = LinhaNave-1;
-//	printf("\n Shippos %d \n",pos);
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
 				(OS_TICK		*) 0,
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
 				(OS_ERR        *)&err_os);
-	while (y >= 0){//((LABIRINTO[pos][y] != 5) || (LABIRINTO[pos][y]!= 1)){
+	while ((LABIRINTO[pos][y-1] != 5)) { ///|| (LABIRINTO[pos][y-1] != 3)){
 		LABIRINTO[pos][y] = 0;
 		y--;
 		LABIRINTO[pos][y] = 2;
-		printf("\npos tiro %d",y);
-		OSSemPost((OS_SEM		*)&SemaforoLabrinto,
-				OS_OPT_POST_1,
-				(OS_ERR		*)&err_os);
-	 // OSTimeDlyHMSM(0,0,0,10,OS_OPT_TIME_DLY, &err_os);
-	OSTimeDly(100, OS_OPT_TIME_DLY, &err_os);
+		OSTimeDly(10, OS_OPT_TIME_DLY, &err_os);
+	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
+			   OS_OPT_POST_1,
+			  (OS_ERR		*)&err_os);
 	}
-//	OSTaskDel((OS_TCB *)&TaskShotTcb,&err_os);
-
+	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
+				(OS_TICK		*) 0,
+				OS_OPT_PEND_BLOCKING,
+				(CPU_TS		*) 0,
+				(OS_ERR        *)&err_os);
+	LABIRINTO[pos][y] = 0;
+	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
+			   OS_OPT_POST_1,
+			   (OS_ERR		*)&err_os);
 }
-/*
-*********************************************************************************************************
-*                                           CriaShot()
-*
-* Description : Cria a tarefa de um tiro da nave
-*
-* Arguments   :  pos posição x do disparo
-*
-* Returns     : none.
-*
-*
-*********************************************************************************************************
-*/
 
-static  void CriaShot(int pos){
-	OS_ERR err_os;
-	OSTaskCreate((OS_TCB		*)&TaskShotTcb,
-				 (CPU_CHAR		*)"Task Shot",
-				 (OS_TASK_PTR	 ) TaskShot,
-				 (void			*) &pos,
-				 (OS_PRIO		 ) 10,
-				 (CPU_STK		*)&TaskShotStk[0],
-				 (CPU_STK_SIZE   ) TSKTELA_STK_SIZE / 10u,
-				 (CPU_STK_SIZE	 ) TSKTELA_STK_SIZE,
-				 (OS_MEM_QTY	 ) 0u,
-				 (OS_TICK		 ) 0u,
-				 (CPU_TS		*) 0,
-				 (OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
-				 (OS_ERR	    *)&err_os);
-	
-}
 /*
 *********************************************************************************************************
 *                                           App_TaskStart()
@@ -467,8 +439,6 @@ static  void  App_TaskStart (void  *p_arg)
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 			  OS_OPT_POST_1,
 			  (OS_ERR		*)&err_os);
-	//Carrega imagem Missil
-	missil = GUI_CreateImage("missil.bmp",13,20);
 	printf("\n Inicio do loop de msg");
 
     // Loop de mensagens para interface grafica
@@ -489,7 +459,9 @@ static  void  App_TaskStart (void  *p_arg)
 			TranslateMessage(&Msg);
 			DispatchMessage(&Msg);
 
-			OSTimeDlyHMSM(0,0,0,40,OS_OPT_TIME_DLY, &err_os);
+			//OSTimeDlyHMSM(0,0,0,40,OS_OPT_TIME_DLY, &err_os);
+			OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
+
     }
 
 	printf("\n fim do loop de msg");
@@ -550,7 +522,7 @@ LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 						 OS_OPT_PEND_BLOCKING,
 						 (CPU_TS		*) 0,
 						 (OS_ERR        *)&err_os);
-				CriaShot(ShipPos);
+				Shot(ShipPos);
 				OSSemPost((OS_SEM		*)&SemaforoShipPos,
 						  OS_OPT_POST_1,
 						  (OS_ERR		*)&err_os);
