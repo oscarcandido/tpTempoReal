@@ -8,7 +8,7 @@
 *
 * Arquivo			: app.c
 * Versao			: 
-* Aluno(s)			:  OSCAR F C LONGUINHO / LUCAS MANOEL
+* Aluno(s)			:  OSCAR F C LONGUINHO / LUCAS MANOEL / JOSE AUGUSTO
 * Data				:  
 * Descricao			: Desenvolver o Jogo da Nave
 *********************************************************************************************************
@@ -89,6 +89,7 @@ static  CPU_STK  TaskEnemyStk[NumEnemy][TSKENEMY_STK_SIZE];
 static	OS_SEM	 SemaforoTela;
 static  OS_SEM	 SemaforoShipPos;
 static  OS_SEM	 SemaforoLabrinto;
+static	OS_SEM   SemaforoEnemyCount;
 // imagens usadas no programa
 HBITMAP * fundo;
 HBITMAP * ship;
@@ -190,7 +191,7 @@ static  void  TaskTela(void *p_arg);
 static	void  MoveShip(int dir);
 static	void  Shot(int pos);
 static  void  TaskEnemy(void *p_arg);
-
+static	void  EnemyShot(int x,int y);
 LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
@@ -362,18 +363,18 @@ static void Shot(int pos)
 	OS_ERR err_os;
 	int y = LinhaNave-1;
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
-				(OS_TICK		*) 0,
+				(OS_TICK	*) 0,
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
-				(OS_ERR        *)&err_os);
+				(OS_ERR     *)&err_os);
 	while ((LABIRINTO[pos][y-1] != 5) &&  (LABIRINTO[pos][y-1] != 3)){
 		LABIRINTO[pos][y] = 0;
 		y--;
 		LABIRINTO[pos][y] = 2;
 		OSTimeDly(10, OS_OPT_TIME_DLY, &err_os);
-	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
-			   OS_OPT_POST_1,
-			  (OS_ERR		*)&err_os);
+		OSSemPost((OS_SEM		*)&SemaforoLabrinto,
+				   OS_OPT_POST_1,
+				  (OS_ERR		*)&err_os);
 	}
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
 				(OS_TICK		*) 0,
@@ -383,7 +384,17 @@ static void Shot(int pos)
 	if (LABIRINTO[pos][y-1] == 3){
 		LABIRINTO[pos][y-1] = 0;
 		LABIRINTO[pos][y] = 0;
+		OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
+				  (OS_TICK	*) 0,
+				  OS_OPT_PEND_BLOCKING,
+				  (CPU_TS	*)0,
+				  (OS_ERR	*)&err_os);
+		
 		EnemyCount--;
+
+		OSSemPost((OS_SEM	*)&SemaforoEnemyCount,
+				  OS_OPT_POST_1,
+				  (OS_ERR	*)&err_os);
 	}
 	else
 	{
@@ -423,7 +434,7 @@ static void TaskEnemy(void *p_arg){
 				(CPU_TS		*) 0,
 				(OS_ERR        *)&err_os);
 
-	LABIRINTO[x[i]][y[i]]=3;
+	LABIRINTO[x[i]][y[i]] = 3;
 
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 			   OS_OPT_POST_1,
@@ -479,6 +490,8 @@ static  void  App_TaskStart (void  *p_arg)
 	OSSemCreate(&SemaforoShipPos,"Semaforo Pos Nave",1,&err_os);
 	//Cria Semaforo Labirinto
 	OSSemCreate(&SemaforoLabrinto,"Semaforo Labirinto",1,&err_os);
+	//Cria Semaforo Contador de inimigos
+	OSSemCreate(&SemaforoEnemyCount,"Semaforo Contador Inimigo",1,&err_os);
 	//Inicia Posição da Nave
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
 			 (OS_TICK		*) 0,
@@ -515,8 +528,19 @@ static  void  App_TaskStart (void  *p_arg)
 
 			//OSTimeDlyHMSM(0,0,0,40,OS_OPT_TIME_DLY, &err_os);
 			OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
-			j = EnemyCount;
 			//Cria inimigos
+			OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
+					(OS_TICK	*) 0,
+					OS_OPT_PEND_BLOCKING,
+					(CPU_TS	*)0,
+					(OS_ERR	*)&err_os);
+
+			j = EnemyCount;
+
+			OSSemPost((OS_SEM	*)&SemaforoEnemyCount,
+					  OS_OPT_POST_1,
+					  (OS_ERR	*)&err_os);
+
 			while(j<NumEnemy){
 				index[j] = j;
 				OSTaskCreate((OS_TCB		*)&TaskEnemyTCB[j],
@@ -534,7 +558,17 @@ static  void  App_TaskStart (void  *p_arg)
 							 (OS_ERR	    *)&err_os);
 				OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
 				j++;
+				OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
+						(OS_TICK	*) 0,
+						OS_OPT_PEND_BLOCKING,
+						(CPU_TS	*)0,
+						(OS_ERR	*)&err_os);
+
 				EnemyCount++;
+
+				OSSemPost((OS_SEM	*)&SemaforoEnemyCount,
+						  OS_OPT_POST_1,
+						  (OS_ERR	*)&err_os);
 			}
     }
 
