@@ -43,7 +43,7 @@
 #define TSKENEMY_STK_SIZE 2000
 #define TSKTELA_STK_SIZE 2000
 #define TSKSHOT_STK_SIZE 2000
-#define NumEnemy 5
+#define NumEnemy 15
 #define Linhas 38
 #define Colunas 23
 #define LinhaNave 21
@@ -83,6 +83,8 @@ static  OS_TCB   AppStartTaskTCB;
 static  CPU_STK  AppStartTaskStk[APP_TASK_START_STK_SIZE];
 static	OS_TCB   TaskTelaTcb;
 static  CPU_STK	 TaskTelaStk[TSKTELA_STK_SIZE];
+static	OS_TCB	 TaskEnemyTCB[NumEnemy];
+static  CPU_STK  TaskEnemyStk[NumEnemy][TSKENEMY_STK_SIZE];
 //Semáforos
 static	OS_SEM	 SemaforoTela;
 static  OS_SEM	 SemaforoShipPos;
@@ -110,24 +112,7 @@ int ShipPos = 18;
 
 //Labirinto dos obstáculos
 int LABIRINTO[Linhas][Colunas] = {	 { 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}
-									,{ 5, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}//LADO ESQUERO INFERIOR
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}//LADO ESQUERO INFERIOR
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
@@ -135,16 +120,33 @@ int LABIRINTO[Linhas][Colunas] = {	 { 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
 									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
-									,{ 5, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5} //LADO DIREITO INFERIOR
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}
+									,{ 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5} //LADO DIREITO INFERIOR
 									,{ 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}
    };
 
@@ -185,6 +187,8 @@ extern MSG Msg;
 static  void  App_TaskStart (void  *p_arg);
 static  void  TaskTela(void *p_arg);
 static	void  MoveShip(int dir);
+static	void  Shot(int pos);
+static  void  TaskEnemy(void *p_arg);
 
 LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -362,7 +366,7 @@ static void Shot(int pos)
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
 				(OS_ERR        *)&err_os);
-	while ((LABIRINTO[pos][y-1] != 5)) { ///|| (LABIRINTO[pos][y-1] != 3)){
+	while ((LABIRINTO[pos][y-1] != 5) &&  (LABIRINTO[pos][y-1] != 3)){
 		LABIRINTO[pos][y] = 0;
 		y--;
 		LABIRINTO[pos][y] = 2;
@@ -376,12 +380,55 @@ static void Shot(int pos)
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
 				(OS_ERR        *)&err_os);
-	LABIRINTO[pos][y] = 0;
+	if (LABIRINTO[pos][y-1] != 5){
+		LABIRINTO[pos][y-1] = 0;
+		LABIRINTO[pos][y] = 0;
+	}
+	else
+	{
+		LABIRINTO[pos][y-1] = 5;
+		LABIRINTO[pos][y] = 0;
+	}
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 			   OS_OPT_POST_1,
 			   (OS_ERR		*)&err_os);
 }
+/*
+*********************************************************************************************************
+*                                           TaskEnemy()
+*
+* Description : Inimigo.
+*
+* Arguments   : p_arg       Argumento passado a 'OSTaskCreate()'.
+*
+* Returns     : none.
+*
+* Created by  : App_TaskStart().
+*
+*********************************************************************************************************
+*/
+static void TaskEnemy(void *p_arg){
+	int x[NumEnemy];
+	int y[NumEnemy];
+	OS_ERR err_os;
+	int i = *((int *)p_arg);
+	//srand( (unsigned) time(NULL) );
+	srand(OSTimeGet(&err_os));
+ 	x[i] = (rand() % 35) + 1;
+	y[i] = (rand() % 10) + 1;
+	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
+				(OS_TICK		*) 0,
+				OS_OPT_PEND_BLOCKING,
+				(CPU_TS		*) 0,
+				(OS_ERR        *)&err_os);
 
+	LABIRINTO[x[i]][y[i]]=3;
+
+	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
+			   OS_OPT_POST_1,
+			  (OS_ERR		*)&err_os);
+	OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
+}
 /*
 *********************************************************************************************************
 *                                           App_TaskStart()
@@ -400,6 +447,8 @@ static void Shot(int pos)
 static  void  App_TaskStart (void  *p_arg)
 {
 	int i=0;
+	int j=0;
+	int index[NumEnemy];
 	int erroN;
 	OS_ERR  err_os;
 
@@ -439,19 +488,38 @@ static  void  App_TaskStart (void  *p_arg)
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 			  OS_OPT_POST_1,
 			  (OS_ERR		*)&err_os);
+
+	//Cria inimigos
+	for(j=0;j<NumEnemy;j++){
+		index[j] = j;
+		OSTaskCreate((OS_TCB		*)&TaskEnemyTCB[j],
+					 (CPU_CHAR		*)"TaskEnemy" + j,
+					 (OS_TASK_PTR	 ) TaskEnemy,
+					 (void			*) &index[j],
+					 (OS_PRIO		 ) 10,
+					 (CPU_STK		*)&TaskEnemyStk[j][0],
+					 (CPU_STK_SIZE   ) TSKENEMY_STK_SIZE / 10u,
+					 (CPU_STK_SIZE	 ) TSKENEMY_STK_SIZE,
+					 (OS_MEM_QTY	 ) 0u,
+					 (OS_TICK		 ) 0u,
+					 (CPU_TS		*) 0,
+					 (OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+					 (OS_ERR	    *)&err_os);
+	OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
+	}
 	printf("\n Inicio do loop de msg");
 
     // Loop de mensagens para interface grafica
     while (1)
    		 {
-		OSSemPend((OS_SEM		*)&SemaforoTela,
-				  (OS_TICK		*) 0,
-				  OS_OPT_PEND_BLOCKING,
-				  (CPU_TS		*) 0,
-				  (OS_ERR		*)&err_os);
-		fundo = GUI_CreateImage( "fundo.bmp", 780, 556);
-		GUI_DrawImage(fundo,0,0,780 ,556,5);
-		OSSemPost((OS_SEM		*)&SemaforoTela,
+			OSSemPend((OS_SEM		*)&SemaforoTela,
+					  (OS_TICK		*) 0,
+					  OS_OPT_PEND_BLOCKING,
+					  (CPU_TS		*) 0,
+					  (OS_ERR		*)&err_os);
+			fundo = GUI_CreateImage( "fundo.bmp", 780, 556);
+			GUI_DrawImage(fundo,0,0,780 ,556,5);
+			OSSemPost((OS_SEM		*)&SemaforoTela,
 					OS_OPT_POST_1,
 					(OS_ERR		*)&err_os);
 			 PeekMessage(&Msg, 0, 0, 0, PM_REMOVE);
