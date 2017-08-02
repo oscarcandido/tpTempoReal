@@ -43,10 +43,12 @@
 #define TSKENEMY_STK_SIZE 2000
 #define TSKTELA_STK_SIZE 2000
 #define TSKSHOT_STK_SIZE 2000
-#define NumEnemy 5
+#define TSKMOVENE_STK_SIZE 2000
+#define NumEnemy 8
 #define Linhas 38
 #define Colunas 23
 #define LinhaNave 21
+#define EnemyLine 5
 /*
 *********************************************************************************************************
 *                                           LOCAL CONSTANTS
@@ -85,19 +87,27 @@ static	OS_TCB   TaskTelaTcb;
 static  CPU_STK	 TaskTelaStk[TSKTELA_STK_SIZE];
 static	OS_TCB	 TaskEnemyTCB[NumEnemy];
 static  CPU_STK  TaskEnemyStk[NumEnemy][TSKENEMY_STK_SIZE];
+static	OS_TCB	 TaskMoveEnemyTCB[NumEnemy];
+static  CPU_STK  TaskMoveEnemyStk[NumEnemy][TSKMOVENE_STK_SIZE];
 //Semáforos
 static	OS_SEM	 SemaforoTela;
 static  OS_SEM	 SemaforoShipPos;
 static  OS_SEM	 SemaforoLabrinto;
 static	OS_SEM   SemaforoEnemyCount;
+static	OS_SEM	 SemaforoPosEnemy;
+static  OS_SEM   SemaforoEnemy;
 // imagens usadas no programa
 HBITMAP * fundo;
 HBITMAP * ship;
 HBITMAP * enemy;
 HBITMAP * missil;
+//Variáveis globais
 int imgXPos, imgYPos;
 int ShipPos = 18;
 int EnemyCount = 0;
+int xEnemy[NumEnemy];
+int yEnemy[NumEnemy];
+int Enemy[NumEnemy];
 /*
 *********************************************************************************************************
 *********************************************************************************************************/
@@ -192,6 +202,7 @@ static	void  MoveShip(int dir);
 static	void  Shot(int pos);
 static  void  TaskEnemy(void *p_arg);
 static	void  EnemyShot(int x,int y);
+static	void  MoveEnemy(void *p_arg);
 LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
@@ -361,6 +372,7 @@ static  void MoveShip(int dir){
 static void Shot(int pos)
 {
 	OS_ERR err_os;
+	int i;
 	int y = LinhaNave-1;
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
 				(OS_TICK	*) 0,
@@ -383,6 +395,21 @@ static void Shot(int pos)
 				(OS_ERR        *)&err_os);
 	if (LABIRINTO[pos][y-1] == 3){
 		LABIRINTO[pos][y-1] = 0;
+		for(i=0;i<NumEnemy;i++){
+			if ((xEnemy[i] == pos) && (yEnemy[i] == (y-1))){
+				OSSemPend((OS_SEM	*)&SemaforoEnemy,
+						  (OS_TICK	*)0,
+						  OS_OPT_PEND_BLOCKING,
+						  (CPU_TS	*)0,
+						  (OS_ERR	*)&err_os);
+
+						Enemy[i] = 0;
+
+				OSSemPost((OS_SEM	*)&SemaforoEnemy,
+						   OS_OPT_POST_1,
+						   (OS_ERR	*)&err_os);
+			}
+		}
 		LABIRINTO[pos][y] = 0;
 		OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
 				  (OS_TICK	*) 0,
@@ -407,6 +434,49 @@ static void Shot(int pos)
 }
 /*
 *********************************************************************************************************
+*                                           MoveEnemy()
+*
+* Description : Move o Inimigo.
+*
+* Arguments   : p_arg       Argumento passado a 'OSTaskCreate()'.
+*
+* Returns     : none.
+*
+* Created by  : TaskEnemy().
+*
+*********************************************************************************************************
+*/
+static void MoveEnemy(void *p_arg){
+	int i = *((int *)p_arg);
+	while((LABIRINTO[xEnemy[i]+1][yEnemy[i]+1] != 5) ){
+		OS_ERR err_os;
+		OSSemPend((OS_SEM		*)&SemaforoLabrinto,
+					(OS_TICK		*) 0,
+					OS_OPT_PEND_BLOCKING,
+					(CPU_TS		*) 0,
+					(OS_ERR        *)&err_os);
+		LABIRINTO[xEnemy[i]][yEnemy[i]] = 0;
+		yEnemy[i]++;
+		OSSemPend((OS_SEM	*)&SemaforoEnemy,
+				  (OS_TICK	*)0,
+				  OS_OPT_PEND_BLOCKING,
+				  (CPU_TS	*)0,
+				  (OS_ERR	*)&err_os);
+
+		LABIRINTO[xEnemy[i]][yEnemy[i]] = Enemy[i];
+
+		OSSemPost((OS_SEM	*)&SemaforoEnemy,
+				  OS_OPT_POST_1,
+				  (OS_ERR	*)&err_os);
+		OSSemPost((OS_SEM		*)&SemaforoLabrinto,
+				   OS_OPT_POST_1,
+				  (OS_ERR		*)&err_os);
+			OSTimeDly(2000, OS_OPT_TIME_DLY, &err_os);
+
+	}
+}
+/*
+*********************************************************************************************************
 *                                           TaskEnemy()
 *
 * Description : Inimigo.
@@ -420,26 +490,41 @@ static void Shot(int pos)
 *********************************************************************************************************
 */
 static void TaskEnemy(void *p_arg){
-	int x[NumEnemy];
-	int y[NumEnemy];
+	int j;
+	int k;
 	OS_ERR err_os;
 	int i = *((int *)p_arg);
-	//srand( (unsigned) time(NULL) );
 	srand(OSTimeGet(&err_os));
- 	x[i] = (rand() % 35) + 1;
-	y[i] = (rand() % 10) + 1;
+	xEnemy[i] = (rand() % 35) + 1;
+	yEnemy[i] = (rand() % EnemyLine) + 1;
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
 				(OS_TICK		*) 0,
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
 				(OS_ERR        *)&err_os);
 
-	LABIRINTO[x[i]][y[i]] = 3;
+	LABIRINTO[xEnemy[i]][yEnemy[i]] = Enemy[i];
 
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 			   OS_OPT_POST_1,
 			  (OS_ERR		*)&err_os);
+
+	OSTaskCreate((OS_TCB     *)&TaskMoveEnemyTCB[i],                /* Cria a tarefa inicial.                             */
+                 (CPU_CHAR   *)"Task Move Enemy",
+                 (OS_TASK_PTR ) MoveEnemy,
+                 (void       *) &i,
+                 (OS_PRIO     ) APP_TASK_START_PRIO,
+				 (CPU_STK    *)&TaskMoveEnemyStk[i][0],
+                 (CPU_STK_SIZE) APP_TASK_START_STK_SIZE / 10u,
+                 (CPU_STK_SIZE) APP_TASK_START_STK_SIZE,
+                 (OS_MSG_QTY  ) 0u,
+                 (OS_TICK     ) 0u,
+                 (void       *) 0,
+                 (OS_OPT      )(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+                 (OS_ERR     *)&err_os);
+
 	OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
+
 }
 /*
 *********************************************************************************************************
@@ -492,6 +577,8 @@ static  void  App_TaskStart (void  *p_arg)
 	OSSemCreate(&SemaforoLabrinto,"Semaforo Labirinto",1,&err_os);
 	//Cria Semaforo Contador de inimigos
 	OSSemCreate(&SemaforoEnemyCount,"Semaforo Contador Inimigo",1,&err_os);
+	//Cria Semaforo Inimigos
+	OSSemCreate(&SemaforoEnemy,"Semaforo Inimigo",1,&err_os);
 	//Inicia Posição da Nave
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
 			 (OS_TICK		*) 0,
@@ -502,15 +589,64 @@ static  void  App_TaskStart (void  *p_arg)
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 			  OS_OPT_POST_1,
 			  (OS_ERR		*)&err_os);
+	//Cria inimigos
+	OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
+			(OS_TICK	*) 0,
+			OS_OPT_PEND_BLOCKING,
+			(CPU_TS	*)0,
+			(OS_ERR	*)&err_os);
+	j = 0;
+
+	OSSemPost((OS_SEM	*)&SemaforoEnemyCount,
+				OS_OPT_POST_1,
+				(OS_ERR	*)&err_os);
+
+	while(j<NumEnemy){
+		index[j] = j;
+		OSSemPend((OS_SEM	*)&SemaforoEnemy,
+				  (OS_TICK	*)0,
+				  OS_OPT_PEND_BLOCKING,
+				  (CPU_TS	*)0,
+				  (OS_ERR	*)&err_os);
+		
+		Enemy[j] = 3;
+
+		OSSemPost((OS_SEM	*)&SemaforoEnemy,
+				   OS_OPT_POST_1,
+				   (OS_ERR	*)&err_os);
+		OSTaskCreate((OS_TCB		*)&TaskEnemyTCB[j],
+						(CPU_CHAR		*)"TaskEnemy" + j,
+						(OS_TASK_PTR	 ) TaskEnemy,
+						(void			*) &index[j],
+						(OS_PRIO		 ) 10,
+						(CPU_STK		*)&TaskEnemyStk[j][0],
+						(CPU_STK_SIZE   ) TSKENEMY_STK_SIZE / 10u,
+						(CPU_STK_SIZE	 ) TSKENEMY_STK_SIZE,
+						(OS_MEM_QTY	 ) 0u,
+						(OS_TICK		 ) 0u,
+						(CPU_TS		*) 0,
+						(OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+						(OS_ERR	    *)&err_os);
+		OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
+		j++;
+		OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
+				(OS_TICK	*) 0,
+				OS_OPT_PEND_BLOCKING,
+				(CPU_TS	*)0,
+				(OS_ERR	*)&err_os);
+
+		EnemyCount++;
+
+		OSSemPost((OS_SEM	*)&SemaforoEnemyCount,
+					OS_OPT_POST_1,
+					(OS_ERR	*)&err_os);
+	}
 
 	printf("\n Inicio do loop de msg");
 
     // Loop de mensagens para interface grafica
     while (1)
    		 {
-			 if((OSTimeGet(&err_os) % 200) < 10){
-				 printf("\n %d",(OSTimeGet(&err_os) % 200));
-			 }
 			OSSemPend((OS_SEM		*)&SemaforoTela,
 					  (OS_TICK		*) 0,
 					  OS_OPT_PEND_BLOCKING,
@@ -528,48 +664,7 @@ static  void  App_TaskStart (void  *p_arg)
 
 			//OSTimeDlyHMSM(0,0,0,40,OS_OPT_TIME_DLY, &err_os);
 			OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
-			//Cria inimigos
-			OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
-					(OS_TICK	*) 0,
-					OS_OPT_PEND_BLOCKING,
-					(CPU_TS	*)0,
-					(OS_ERR	*)&err_os);
 
-			j = EnemyCount;
-
-			OSSemPost((OS_SEM	*)&SemaforoEnemyCount,
-					  OS_OPT_POST_1,
-					  (OS_ERR	*)&err_os);
-
-			while(j<NumEnemy){
-				index[j] = j;
-				OSTaskCreate((OS_TCB		*)&TaskEnemyTCB[j],
-							 (CPU_CHAR		*)"TaskEnemy" + j,
-							 (OS_TASK_PTR	 ) TaskEnemy,
-							 (void			*) &index[j],
-							 (OS_PRIO		 ) 10,
-							 (CPU_STK		*)&TaskEnemyStk[j][0],
-							 (CPU_STK_SIZE   ) TSKENEMY_STK_SIZE / 10u,
-							 (CPU_STK_SIZE	 ) TSKENEMY_STK_SIZE,
-							 (OS_MEM_QTY	 ) 0u,
-							 (OS_TICK		 ) 0u,
-							 (CPU_TS		*) 0,
-							 (OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
-							 (OS_ERR	    *)&err_os);
-				OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
-				j++;
-				OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
-						(OS_TICK	*) 0,
-						OS_OPT_PEND_BLOCKING,
-						(CPU_TS	*)0,
-						(OS_ERR	*)&err_os);
-
-				EnemyCount++;
-
-				OSSemPost((OS_SEM	*)&SemaforoEnemyCount,
-						  OS_OPT_POST_1,
-						  (OS_ERR	*)&err_os);
-			}
     }
 
 	printf("\n fim do loop de msg");
