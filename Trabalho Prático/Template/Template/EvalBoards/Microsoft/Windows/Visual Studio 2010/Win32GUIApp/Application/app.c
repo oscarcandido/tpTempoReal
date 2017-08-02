@@ -43,7 +43,7 @@
 #define TSKENEMY_STK_SIZE 2000
 #define TSKTELA_STK_SIZE 2000
 #define TSKSHOT_STK_SIZE 2000
-#define NumEnemy 15
+#define NumEnemy 5
 #define Linhas 38
 #define Colunas 23
 #define LinhaNave 21
@@ -96,6 +96,7 @@ HBITMAP * enemy;
 HBITMAP * missil;
 int imgXPos, imgYPos;
 int ShipPos = 18;
+int EnemyCount = 0;
 /*
 *********************************************************************************************************
 *********************************************************************************************************/
@@ -264,7 +265,7 @@ static void TaskTela(void *p_arg){
 	while(1){
 		ship = GUI_CreateImage("nave.bmp",60,60);
 		DeleteObject(enemy);
-		enemy = GUI_CreateImage("inimigo.bmp",30,30);
+		enemy = GUI_CreateImage("inimigo.bmp",35,35);
 		DeleteObject(fundo);
 		DeleteObject(missil);
 		missil = GUI_CreateImage("missil.bmp",60,20);
@@ -285,7 +286,7 @@ static void TaskTela(void *p_arg){
 					break;
 				case 2 : GUI_DrawImage(missil,i * 20,j*20,60,20,1);
 					break;
-				case 3 : GUI_DrawImage(enemy,i * 20,j*20,30,30,1);
+				case 3 : GUI_DrawImage(enemy,i * 20,j*20,35,35,1);
 					break;
 				}
 				OSSemPost((OS_SEM		*)&SemaforoLabrinto,
@@ -296,7 +297,6 @@ static void TaskTela(void *p_arg){
 		OSSemPost((OS_SEM		*)&SemaforoTela,
 					OS_OPT_POST_1,
 					(OS_ERR		*)&err_os);
-	//	OSTimeDlyHMSM(0,0,0,10,OS_OPT_TIME_DLY,&err_os);
 		OSTimeDly(10, OS_OPT_TIME_DLY, &err_os);
 
 		
@@ -380,9 +380,10 @@ static void Shot(int pos)
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
 				(OS_ERR        *)&err_os);
-	if (LABIRINTO[pos][y-1] != 5){
+	if (LABIRINTO[pos][y-1] == 3){
 		LABIRINTO[pos][y-1] = 0;
 		LABIRINTO[pos][y] = 0;
+		EnemyCount--;
 	}
 	else
 	{
@@ -489,29 +490,14 @@ static  void  App_TaskStart (void  *p_arg)
 			  OS_OPT_POST_1,
 			  (OS_ERR		*)&err_os);
 
-	//Cria inimigos
-	for(j=0;j<NumEnemy;j++){
-		index[j] = j;
-		OSTaskCreate((OS_TCB		*)&TaskEnemyTCB[j],
-					 (CPU_CHAR		*)"TaskEnemy" + j,
-					 (OS_TASK_PTR	 ) TaskEnemy,
-					 (void			*) &index[j],
-					 (OS_PRIO		 ) 10,
-					 (CPU_STK		*)&TaskEnemyStk[j][0],
-					 (CPU_STK_SIZE   ) TSKENEMY_STK_SIZE / 10u,
-					 (CPU_STK_SIZE	 ) TSKENEMY_STK_SIZE,
-					 (OS_MEM_QTY	 ) 0u,
-					 (OS_TICK		 ) 0u,
-					 (CPU_TS		*) 0,
-					 (OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
-					 (OS_ERR	    *)&err_os);
-	OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
-	}
 	printf("\n Inicio do loop de msg");
 
     // Loop de mensagens para interface grafica
     while (1)
    		 {
+			 if((OSTimeGet(&err_os) % 200) < 10){
+				 printf("\n %d",(OSTimeGet(&err_os) % 200));
+			 }
 			OSSemPend((OS_SEM		*)&SemaforoTela,
 					  (OS_TICK		*) 0,
 					  OS_OPT_PEND_BLOCKING,
@@ -529,7 +515,27 @@ static  void  App_TaskStart (void  *p_arg)
 
 			//OSTimeDlyHMSM(0,0,0,40,OS_OPT_TIME_DLY, &err_os);
 			OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
-
+			j = EnemyCount;
+			//Cria inimigos
+			while(j<NumEnemy){
+				index[j] = j;
+				OSTaskCreate((OS_TCB		*)&TaskEnemyTCB[j],
+							 (CPU_CHAR		*)"TaskEnemy" + j,
+							 (OS_TASK_PTR	 ) TaskEnemy,
+							 (void			*) &index[j],
+							 (OS_PRIO		 ) 10,
+							 (CPU_STK		*)&TaskEnemyStk[j][0],
+							 (CPU_STK_SIZE   ) TSKENEMY_STK_SIZE / 10u,
+							 (CPU_STK_SIZE	 ) TSKENEMY_STK_SIZE,
+							 (OS_MEM_QTY	 ) 0u,
+							 (OS_TICK		 ) 0u,
+							 (CPU_TS		*) 0,
+							 (OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+							 (OS_ERR	    *)&err_os);
+				OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
+				j++;
+				EnemyCount++;
+			}
     }
 
 	printf("\n fim do loop de msg");
