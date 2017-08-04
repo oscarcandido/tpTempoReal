@@ -44,7 +44,8 @@
 #define TSKTELA_STK_SIZE 2000
 #define TSKSHOT_STK_SIZE 2000
 #define TSKMOVENE_STK_SIZE 2000
-#define NumEnemy 8
+#define TSKENSHOT_STK_SIZE 2000
+#define NumEnemy 7
 #define Linhas 38
 #define Colunas 23
 #define LinhaNave 21
@@ -89,6 +90,8 @@ static	OS_TCB	 TaskEnemyTCB[NumEnemy];
 static  CPU_STK  TaskEnemyStk[NumEnemy][TSKENEMY_STK_SIZE];
 static	OS_TCB	 TaskMoveEnemyTCB[NumEnemy];
 static  CPU_STK  TaskMoveEnemyStk[NumEnemy][TSKMOVENE_STK_SIZE];
+static  OS_TCB	 TaskEnShotTCB[NumEnemy];
+static  CPU_STK	 TaskEnShotStk[NumEnemy][TSKENSHOT_STK_SIZE];
 //Semáforos
 static	OS_SEM	 SemaforoTela;
 static  OS_SEM	 SemaforoShipPos;
@@ -96,18 +99,23 @@ static  OS_SEM	 SemaforoLabrinto;
 static	OS_SEM   SemaforoEnemyCount;
 static	OS_SEM	 SemaforoPosEnemy;
 static  OS_SEM   SemaforoEnemy;
+static  OS_SEM   SemaForoEnemyPos;
 // imagens usadas no programa
 HBITMAP * fundo;
 HBITMAP * ship;
 HBITMAP * enemy;
 HBITMAP * missil;
+HBITMAP * EnShot;
 //Variáveis globais
 int imgXPos, imgYPos;
 int ShipPos = 18;
-int EnemyCount = 0;
+int EnemyCount = -1;
 int xEnemy[NumEnemy];
 int yEnemy[NumEnemy];
 int Enemy[NumEnemy];
+int EnemyDly = 5000;
+int EnShotDly = 30;
+int inicio = 1;
 /*
 *********************************************************************************************************
 *********************************************************************************************************/
@@ -201,7 +209,7 @@ static  void  TaskTela(void *p_arg);
 static	void  MoveShip(int dir);
 static	void  Shot(int pos);
 static  void  TaskEnemy(void *p_arg);
-static	void  EnemyShot(int x,int y);
+static	void  EnemyShot(void *p_arg);
 static	void  MoveEnemy(void *p_arg);
 LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -281,6 +289,8 @@ static void TaskTela(void *p_arg){
 		DeleteObject(fundo);
 		DeleteObject(missil);
 		missil = GUI_CreateImage("missil.bmp",60,20);
+		DeleteObject(EnShot);
+		EnShot = GUI_CreateImage("enemyshot.bmp",60,20);
 		OSSemPend((OS_SEM		*)&SemaforoTela,
 				  (OS_TICK		*) 0,
 				  OS_OPT_PEND_BLOCKING,
@@ -299,6 +309,8 @@ static void TaskTela(void *p_arg){
 				case 2 : GUI_DrawImage(missil,i * 20,j*20,60,20,1);
 					break;
 				case 3 : GUI_DrawImage(enemy,i * 20,j*20,35,35,1);
+					break;
+				case 4 : GUI_DrawImage(EnShot,i * 20,j*20,60,20,1);
 					break;
 				}
 				OSSemPost((OS_SEM		*)&SemaforoLabrinto,
@@ -333,6 +345,7 @@ static void TaskTela(void *p_arg){
 
 static  void MoveShip(int dir){
 	OS_ERR err_os;
+
 	OSSemPend((OS_SEM		*)&SemaforoShipPos,
 			 (OS_TICK		*) 0,
 			 OS_OPT_PEND_BLOCKING,
@@ -396,6 +409,11 @@ static void Shot(int pos)
 	if (LABIRINTO[pos][y-1] == 3){
 		LABIRINTO[pos][y-1] = 0;
 		for(i=0;i<NumEnemy;i++){
+			OSSemPend((OS_SEM	*)&SemaForoEnemyPos,
+					  (OS_TICK	*)0,
+					  OS_OPT_PEND_BLOCKING,
+					  (CPU_TS	*)0,
+					  (OS_ERR	*)&err_os);
 			if ((xEnemy[i] == pos) && (yEnemy[i] == (y-1))){
 				OSSemPend((OS_SEM	*)&SemaforoEnemy,
 						  (OS_TICK	*)0,
@@ -403,12 +421,16 @@ static void Shot(int pos)
 						  (CPU_TS	*)0,
 						  (OS_ERR	*)&err_os);
 
-						Enemy[i] = 0;
+				Enemy[i] = 0;
+				printf("\n Inimigos %d",EnemyCount);
 
 				OSSemPost((OS_SEM	*)&SemaforoEnemy,
 						   OS_OPT_POST_1,
 						   (OS_ERR	*)&err_os);
 			}
+			OSSemPost((OS_SEM	*)&SemaForoEnemyPos,
+					  OS_OPT_POST_1,
+					  (OS_ERR	*)&err_os);
 		}
 		LABIRINTO[pos][y] = 0;
 		OSSemPend((OS_SEM	*)&SemaforoEnemyCount,
@@ -434,6 +456,87 @@ static void Shot(int pos)
 }
 /*
 *********************************************************************************************************
+*                                           EnemyShot()
+*
+* Description : tiro do  Inimigo.
+*
+* Arguments   : p_arg       Argumento passado a 'OSTaskCreate()'.
+*
+* Returns     : none.
+*
+* Created by  : MoveEnemy().
+*
+*********************************************************************************************************
+*/
+static void EnemyShot(void *p_arg){
+	int i = *((int *)p_arg);
+	OS_ERR err_os;
+	int x;
+	int y;
+	int j;
+	OSSemPend((OS_SEM	*)&SemaforoEnemy,
+				(OS_TICK	*)0,
+				OS_OPT_PEND_BLOCKING,
+				(CPU_TS	*)0,
+				(OS_ERR	*)&err_os);
+	if (Enemy[i] == 3){
+		OSSemPost((OS_SEM	*)&SemaforoEnemy,
+					OS_OPT_POST_1,
+					(OS_ERR	*)&err_os);
+
+		OSSemPend((OS_SEM	*)&SemaForoEnemyPos,
+					(OS_TICK	*)0,
+					OS_OPT_PEND_BLOCKING,
+					(CPU_TS	*)0,
+					(OS_ERR	*)&err_os);
+
+		x = xEnemy[i];
+		y = yEnemy[i]+1;
+		for (j=0;j<(EnemyDly/1000);j++){
+			OSSemPost((OS_SEM	*)&SemaForoEnemyPos,
+						OS_OPT_POST_1,
+						(OS_ERR	*)&err_os);
+			while (LABIRINTO[x][y+1] != 5){
+				OSSemPend((OS_SEM	*)&SemaforoLabrinto,
+							(OS_TICK	*)0,
+							OS_OPT_PEND_BLOCKING,
+							(CPU_TS	*)0,
+							(OS_ERR	*)&err_os);
+		
+				LABIRINTO[x][y] = 0;
+				y++;
+				LABIRINTO[x][y] = 4;
+				if ((x == ShipPos) && (y + 1 == LinhaNave)){
+					printf("\n Nave atingida");
+				}
+				OSSemPost((OS_SEM	*)&SemaforoLabrinto,
+						OS_OPT_POST_1,
+						(OS_ERR	*)&err_os);
+				OSTimeDly(EnShotDly, OS_OPT_TIME_DLY, &err_os);
+
+			}
+				OSSemPend((OS_SEM	*)&SemaforoLabrinto,
+							(OS_TICK	*)0,
+							OS_OPT_PEND_BLOCKING,
+							(CPU_TS	*)0,
+							(OS_ERR	*)&err_os);
+		
+				LABIRINTO[x][y] = 0;
+				OSSemPost((OS_SEM	*)&SemaforoLabrinto,
+						OS_OPT_POST_1,
+						(OS_ERR	*)&err_os);
+			x = xEnemy[i];
+			y = yEnemy[i]+1;
+			OSTimeDly((EnemyDly/EnemyDly/1000), OS_OPT_TIME_DLY, &err_os);	
+		}	
+		OSSemPost((OS_SEM	*)&SemaforoEnemy,
+					OS_OPT_POST_1,
+					(OS_ERR	*)&err_os);
+	}
+}
+
+/*
+*********************************************************************************************************
 *                                           MoveEnemy()
 *
 * Description : Move o Inimigo.
@@ -448,8 +551,18 @@ static void Shot(int pos)
 */
 static void MoveEnemy(void *p_arg){
 	int i = *((int *)p_arg);
+	OS_ERR err_os;
+	
+	while (inicio == 1) {
+		OSTimeDly(1000, OS_OPT_TIME_DLY, &err_os);
+	}
+
 	while((LABIRINTO[xEnemy[i]+1][yEnemy[i]+1] != 5) ){
-		OS_ERR err_os;
+		OSSemPend((OS_SEM	*)&SemaForoEnemyPos,
+					(OS_TICK	*)0,
+					OS_OPT_PEND_BLOCKING,
+					(CPU_TS	*)0,
+					(OS_ERR	*)&err_os);
 		OSSemPend((OS_SEM		*)&SemaforoLabrinto,
 					(OS_TICK		*) 0,
 					OS_OPT_PEND_BLOCKING,
@@ -471,7 +584,24 @@ static void MoveEnemy(void *p_arg){
 		OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 				   OS_OPT_POST_1,
 				  (OS_ERR		*)&err_os);
-			OSTimeDly(2000, OS_OPT_TIME_DLY, &err_os);
+		OSSemPost((OS_SEM	*)&SemaForoEnemyPos,
+					OS_OPT_POST_1,
+					(OS_ERR	*)&err_os);
+		OSTaskCreate((OS_TCB     *)&TaskEnShotTCB[i],  
+					 (CPU_CHAR   *)"Task Enemy Shot",
+					 (OS_TASK_PTR ) EnemyShot,
+					 (void       *) &i,
+					 (OS_PRIO     ) APP_TASK_START_PRIO,
+					 (CPU_STK    *)&TaskEnShotStk[i][0],
+					 (CPU_STK_SIZE) TSKENSHOT_STK_SIZE/ 10u,
+					 (CPU_STK_SIZE) TSKENSHOT_STK_SIZE,
+					 (OS_MSG_QTY  ) 0u,
+					 (OS_TICK     ) 0u,
+					 (void       *) 0,
+					 (OS_OPT      )(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+					 (OS_ERR     *)&err_os);
+					
+		OSTimeDly(EnemyDly, OS_OPT_TIME_DLY, &err_os);
 
 	}
 }
@@ -494,22 +624,45 @@ static void TaskEnemy(void *p_arg){
 	int k;
 	OS_ERR err_os;
 	int i = *((int *)p_arg);
-	srand(OSTimeGet(&err_os));
+
+	OSSemPend((OS_SEM	*)&SemaForoEnemyPos,
+				(OS_TICK	*)0,
+				OS_OPT_PEND_BLOCKING,
+				(CPU_TS	*)0,
+				(OS_ERR	*)&err_os);
+	
+	srand((OSTimeGet(&err_os) + (i+OSTimeGet(&err_os)/2)));
 	xEnemy[i] = (rand() % 35) + 1;
-	yEnemy[i] = (rand() % EnemyLine) + 1;
+	yEnemy[i] = (rand() % EnemyLine + 1);
+
+	OSSemPost((OS_SEM	*)&SemaForoEnemyPos,
+				OS_OPT_POST_1,
+				(OS_ERR	*)&err_os);
+
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
-				(OS_TICK		*) 0,
+				(OS_TICK	*) 0,
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
-				(OS_ERR        *)&err_os);
+				(OS_ERR     *)&err_os);
+
+	OSSemPend((OS_SEM	*)&SemaForoEnemyPos,
+				(OS_TICK	*)0,
+				OS_OPT_PEND_BLOCKING,
+				(CPU_TS	*)0,
+				(OS_ERR	*)&err_os);
+
 
 	LABIRINTO[xEnemy[i]][yEnemy[i]] = Enemy[i];
+
+	OSSemPost((OS_SEM	*)&SemaForoEnemyPos,
+				OS_OPT_POST_1,
+	         (OS_ERR	*)&err_os);
 
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 			   OS_OPT_POST_1,
 			  (OS_ERR		*)&err_os);
 
-	OSTaskCreate((OS_TCB     *)&TaskMoveEnemyTCB[i],                /* Cria a tarefa inicial.                             */
+	OSTaskCreate((OS_TCB     *)&TaskMoveEnemyTCB[i],  
                  (CPU_CHAR   *)"Task Move Enemy",
                  (OS_TASK_PTR ) MoveEnemy,
                  (void       *) &i,
@@ -579,6 +732,8 @@ static  void  App_TaskStart (void  *p_arg)
 	OSSemCreate(&SemaforoEnemyCount,"Semaforo Contador Inimigo",1,&err_os);
 	//Cria Semaforo Inimigos
 	OSSemCreate(&SemaforoEnemy,"Semaforo Inimigo",1,&err_os);
+	//Cria Semaforo Posição dos Inimigos
+	OSSemCreate(&SemaForoEnemyPos,"Semaforo Posição Inimigo",1,&err_os);
 	//Inicia Posição da Nave
 	OSSemPend((OS_SEM		*)&SemaforoLabrinto,
 			 (OS_TICK		*) 0,
@@ -663,7 +818,7 @@ static  void  App_TaskStart (void  *p_arg)
 			DispatchMessage(&Msg);
 
 			//OSTimeDlyHMSM(0,0,0,40,OS_OPT_TIME_DLY, &err_os);
-			OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
+			OSTimeDly(25, OS_OPT_TIME_DLY, &err_os);
 
     }
 
@@ -696,6 +851,7 @@ LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			case VK_INSERT:
 			  // Insert code here to process the INS key
 			  // ...
+				inicio = 0;
 			  break;
 
 			case VK_F2:
@@ -720,16 +876,18 @@ LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			case VK_UP:
 			  // Insert code here to process the UP ARROW key
 			  // ...
-				OSSemPend((OS_SEM		*)&SemaforoShipPos,
-						 (OS_TICK		*) 0,
-						 OS_OPT_PEND_BLOCKING,
-						 (CPU_TS		*) 0,
-						 (OS_ERR        *)&err_os);
-				Shot(ShipPos);
-				OSSemPost((OS_SEM		*)&SemaforoShipPos,
-						  OS_OPT_POST_1,
-						  (OS_ERR		*)&err_os);
-				imgYPos-=20;
+				if (inicio == 0){
+					OSSemPend((OS_SEM		*)&SemaforoShipPos,
+							 (OS_TICK		*) 0,
+							 OS_OPT_PEND_BLOCKING,
+							 (CPU_TS		*) 0,
+							 (OS_ERR        *)&err_os);
+					Shot(ShipPos);
+					OSSemPost((OS_SEM		*)&SemaforoShipPos,
+							  OS_OPT_POST_1,
+							  (OS_ERR		*)&err_os);
+					imgYPos-=20;
+				}
 			  break;
 
 			case VK_DOWN:
