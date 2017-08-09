@@ -302,6 +302,10 @@ static void TaskTela(void *p_arg){
 			DeleteObject(GameOver);
 			GameOver = GUI_CreateImage("gameover.bmp",780, 556);
 			GUI_DrawImage(GameOver,0,0,780, 556,1);
+			itoa(Score,sScore,10);
+			GUI_DrawText(sScore,20,65,505,RGB(128,0,0),RGB(128,128,128));
+			itoa(Life,sLife,10);
+			GUI_DrawText(sLife,20,700,505,RGB(128,0,0),RGB(128,128,128));
 			OSSemPost((OS_SEM		*)&SemaforoTela,
 						OS_OPT_POST_1,
 						(OS_ERR		*)&err_os);
@@ -738,8 +742,9 @@ static  void  App_TaskStart (void  *p_arg)
 	int j=0;
 	int index[NumEnemy];
 	int erroN;
+	char sScore[5];
+	char sLife[5];
 	OS_ERR  err_os;
-
 	erroN = GUI_Init(HandleGUIEvents);	// inicializa a interface grafica
 
 	if( erroN < 0 ) { // se falhou para carregar a Gui, retorna.
@@ -835,12 +840,16 @@ static  void  App_TaskStart (void  *p_arg)
 						(OS_ERR		*)&err_os);
 			 }
 			 if (EnemyCount == 0) {
-				 OSTimeDly(200, OS_OPT_TIME_DLY, &err_os);
-				 OSTaskDel((OS_TCB *)&TaskTelaTcb,(OS_ERR *)&err_os);
-				 DeleteObject(fundo);
-				 fundo = GUI_CreateImage( "win.bmp", 780, 556);
-				 GUI_DrawImage(fundo,0,0,780 ,556,5);
-				 OSTimeDly(1000, OS_OPT_TIME_DLY, &err_os);
+				OSTimeDly(200, OS_OPT_TIME_DLY, &err_os);
+				OSTaskDel((OS_TCB *)&TaskTelaTcb,(OS_ERR *)&err_os);
+				DeleteObject(fundo);
+				fundo = GUI_CreateImage( "win.bmp", 780, 556);
+				GUI_DrawImage(fundo,0,0,780 ,556,5);
+				itoa(Score,sScore,10);
+				GUI_DrawText(sScore,20,65,505,RGB(128,0,0),RGB(128,128,128));
+				itoa(Life,sLife,10);
+				GUI_DrawText(sLife,20,700,505,RGB(128,0,0),RGB(128,128,128));
+				OSTimeDly(1000, OS_OPT_TIME_DLY, &err_os);
 			 }
 			 PeekMessage(&Msg, 0, 0, 0, PM_REMOVE);
 
@@ -881,6 +890,7 @@ LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			case VK_INSERT:
 			  // Insert code here to process the INS key
 			  // ...
+				Shot(1);
 				GameStatus = 0;
 			  break;
 
