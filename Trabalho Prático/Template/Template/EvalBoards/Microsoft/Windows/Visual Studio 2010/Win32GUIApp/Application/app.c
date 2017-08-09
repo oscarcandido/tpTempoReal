@@ -114,7 +114,7 @@ int EnemyCount;
 int xEnemy[NumEnemy];
 int yEnemy[NumEnemy];
 int Enemy[NumEnemy];
-int EnemyDly = 2000;
+int EnemyDly = 6000;
 int EnShotDly = 30;
 int GameStatus = 1;
 int Score = 0;
@@ -315,7 +315,7 @@ static void TaskTela(void *p_arg){
 		while(Life >0){
 		ship = GUI_CreateImage("nave.bmp",60,60);
 		DeleteObject(enemy);
-		enemy = GUI_CreateImage("inimigo.bmp",35,35);
+		enemy = GUI_CreateImage("inimigo.bmp",60,20);
 		DeleteObject(fundo);
 		DeleteObject(missil);
 		missil = GUI_CreateImage("missil.bmp",60,20);
@@ -343,7 +343,7 @@ static void TaskTela(void *p_arg){
 					break;
 				case 2 : GUI_DrawImage(missil,i * 20,j*20,60,20,1);
 					break;
-				case 3 : GUI_DrawImage(enemy,i * 20,j*20,35,35,1);
+				case 3 : GUI_DrawImage(enemy,i * 20,j*20,60,20,1);
 					EnemyCount ++;
 					break;
 				case 4 : GUI_DrawImage(EnShot,i * 20,j*20,60,20,1);
@@ -457,7 +457,7 @@ static void Shot(int pos)
 						  (CPU_TS	*)0,
 						  (OS_ERR	*)&err_os);
 				Enemy[i] = 0;
-				Score = Score + 1000;
+				Score = Score + 100 * (Linhas - yEnemy[i]);
 				OSSemPost((OS_SEM	*)&SemaforoEnemy,
 						   OS_OPT_POST_1,
 						   (OS_ERR	*)&err_os);
@@ -563,7 +563,7 @@ static void EnemyShot(void *p_arg){
 							(OS_ERR	*)&err_os);
 				x = xEnemy[i];
 				y = yEnemy[i]+1;
-				OSTimeDly(10, OS_OPT_TIME_DLY, &err_os);	
+				OSTimeDly(100, OS_OPT_TIME_DLY, &err_os);	
 			}	
 			OSSemPost((OS_SEM	*)&SemaforoEnemy,
 						OS_OPT_POST_1,
@@ -674,7 +674,7 @@ static void TaskEnemy(void *p_arg){
 				(OS_ERR	*)&err_os);
 	
 	srand((OSTimeGet(&err_os) + (i+OSTimeGet(&err_os)/2)));
-	xEnemy[i] = (rand() % 5) + (i*5) +1;
+	xEnemy[i] = (rand() % 5) + (i*5) +2;
 	yEnemy[i] = (rand() % EnemyLine + 1);
 
 	OSSemPost((OS_SEM	*)&SemaForoEnemyPos,
@@ -857,7 +857,7 @@ static  void  App_TaskStart (void  *p_arg)
 			DispatchMessage(&Msg);
 
 			//OSTimeDlyHMSM(0,0,0,40,OS_OPT_TIME_DLY, &err_os);
-			OSTimeDly(25, OS_OPT_TIME_DLY, &err_os);
+			OSTimeDly(80, OS_OPT_TIME_DLY, &err_os);
 
     }
 
