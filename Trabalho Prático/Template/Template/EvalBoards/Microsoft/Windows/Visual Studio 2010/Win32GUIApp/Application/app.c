@@ -45,6 +45,7 @@
 #define TSKSHOT_STK_SIZE 2000
 #define TSKMOVENE_STK_SIZE 2000
 #define TSKENSHOT_STK_SIZE 2000
+#define TSKINICIO_STK_SIZE 2000
 #define NumEnemy 7  //número de inimigos
 #define Linhas 38 // número de linhas no labrinto
 #define Colunas 23 // número de colunas no labirinto
@@ -92,6 +93,8 @@ static	OS_TCB	 TaskMoveEnemyTCB[NumEnemy];
 static  CPU_STK  TaskMoveEnemyStk[NumEnemy][TSKMOVENE_STK_SIZE];
 static  OS_TCB	 TaskEnShotTCB[NumEnemy];
 static  CPU_STK	 TaskEnShotStk[NumEnemy][TSKENSHOT_STK_SIZE];
+static  OS_TCB	 TaskInicioTCB;
+static  CPU_STK  TaskInicioStk[TSKINICIO_STK_SIZE];
 //Semáforos
 static	OS_SEM	 SemaforoTela;  //Controla acesso a tela
 static  OS_SEM	 SemaforoShipPos;//Controla acesso à posição da nave
@@ -99,6 +102,7 @@ static  OS_SEM	 SemaforoLabrinto;//Controla acesso à matriz de posições
 static	OS_SEM   SemaforoEnemyCount;//Controla acesso à variável contadora de inimigos
 static  OS_SEM   SemaforoEnemy; //Controla acesso às variáveis dos inimigos 
 static  OS_SEM   SemaForoEnemyPos; //Controla acesso às variáveis de posição dos inimigos
+static  OS_SEM	 SemaforoLevel;//Controla acesso à variável de nível de dificuldade
 // imagens usadas no programa
 HBITMAP * fundo; //imagem de fundo
 HBITMAP * ship;//imagem da nave
@@ -118,6 +122,7 @@ int EnShotDly = 30; //intervalo para cada tiro do inimigo
 int GameStatus = 1; //estado do jogo se 1 jogo iniciando
 int Score = 0;//pontuação do jogador
 int Life = 3;// número de vidas do jogador
+int Level = 1;//0 = Fácil; 1= Normal; 2 = Difícil;
 /*
 *********************************************************************************************************
 *********************************************************************************************************/
@@ -213,6 +218,7 @@ static	void  Shot(int pos);//Tiro da nave
 static  void  TaskEnemy(void *p_arg);//Tarefa dos inimigos
 static	void  EnemyShot(void *p_arg);//Tiro do inimigo
 static	void  MoveEnemy(void *p_arg);//Movimenta os inimigos
+static  void  TaskInicio(void *p_arg);//Tela inicial do Jogo
 LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
@@ -287,6 +293,10 @@ static void TaskTela(void *p_arg){
 	char sLife[5];
 	OS_ERR err_os;
 	while (1){ 
+		while (GameStatus == 1){
+			OSTimeDly(1000, OS_OPT_TIME_DLY, &err_os);
+		}
+		OSTaskDel(&TaskInicioTCB,&err_os);
 		if (Life <= 0){ //se acabaram as vidas do jogador, imprime a tela de fim de jogo
 			OSSemPend((OS_SEM		*)&SemaforoTela,
 					  (OS_TICK		*) 0,
@@ -724,6 +734,74 @@ static void TaskEnemy(void *p_arg){
 }
 /*
 *********************************************************************************************************
+*                                           TaskInicio()
+*
+* Description : tiro do  Inimigo.
+*
+* Arguments   : p_arg       Argumento passado a 'OSTaskCreate()'.
+*
+* Returns     : none.
+*
+* Created by  : MoveEnemy().
+*
+*********************************************************************************************************
+*/
+static void TaskInicio(void *p_arg)
+{
+	OS_ERR err_os;
+	while (1){
+		DeleteObject(fundo);
+		DeleteObject(ship);
+		fundo = GUI_CreateImage( "fundo.bmp", 780, 556);
+		ship = GUI_CreateImage("nave.bmp",100,100);
+		if(GameStatus == 1){
+			OSSemPend((OS_SEM		*)&SemaforoTela,
+					(OS_TICK		*) 0,
+					OS_OPT_PEND_BLOCKING,
+					(CPU_TS		*) 0,
+					(OS_ERR		*)&err_os);
+			GUI_DrawImage(fundo,0,0,780 ,556,5);
+			GUI_DrawImage(ship,300,10,100 ,100,5);
+			GUI_DrawText("ESCOLHA O NÍVEL DE DIFICULDADE",20,140,100,RGB(0,128,0),RGB(0,0,0));		
+			OSSemPend((OS_SEM		*)&SemaforoLevel,
+					(OS_TICK		*) 0,
+					OS_OPT_PEND_BLOCKING,
+					(CPU_TS		*) 0,
+					(OS_ERR		*)&err_os);
+			switch (Level)
+			{
+			case 0:
+				GUI_DrawText("> FÁCIL",20,300,200,RGB(0,128,0),RGB(0,0,0));
+				GUI_DrawText("NORMAL",20,300,240,RGB(128,0,0),RGB(0,0,0));
+				GUI_DrawText("DIFÍCIL",20,300,280,RGB(128,0,0),RGB(0,0,0));
+				EnemyDly = 6000;
+				break;
+			case 1:
+				GUI_DrawText("FÁCIL",20,300,200,RGB(128,0,0),RGB(0,0,0));
+				GUI_DrawText(">NORMAL",20,300,240,RGB(0,128,0),RGB(0,0,0));
+				GUI_DrawText("DIFÍCIL",20,300,280,RGB(128,0,0),RGB(0,0,0));
+				EnemyDly = 4000;
+				break;
+			case 2:
+				GUI_DrawText("FÁCIL",20,300,200,RGB(128,0,0),RGB(0,0,0));
+				GUI_DrawText("NORMAL",20,300,240,RGB(128,0,0),RGB(0,0,0));
+				GUI_DrawText(">DIFÍCIL",20,300,280,RGB(0,128,0),RGB(0,0,0));
+				EnemyDly = 2000;
+				break;
+			}
+			GUI_DrawText("PRESSIONE INSERT PARA COMEÇAR",20,140,380,RGB(0,128,0),RGB(0,0,0));		
+			OSSemPost((OS_SEM		*)&SemaforoLevel,
+					   OS_OPT_POST_1,
+					  (OS_ERR		*)&err_os);
+			OSSemPost((OS_SEM		*)&SemaforoTela,
+					   OS_OPT_POST_1,
+					  (OS_ERR		*)&err_os);
+			OSTimeDly(200, OS_OPT_TIME_DLY, &err_os);
+		}
+	}
+}
+/*
+*********************************************************************************************************
 *                                           App_TaskStart()
 *
 * Description : Exemplo de tarefa Inicial do sistema.
@@ -751,6 +829,8 @@ static  void  App_TaskStart (void  *p_arg)
 	if( erroN < 0 ) { // se falhou para carregar a Gui, retorna.
 		printf("\n Erro ao iniciar a Gui (%d)",erroN);
 	}
+	//Cria Semaforo Nível de dificuldade
+	OSSemCreate(&SemaforoLevel,"Nível de dificuldade",1,&err_os);
 	//Cria semaforo Tela
 	OSSemCreate(&SemaforoTela,"Semaforo Tela",1,&err_os);
 	//Desenhar itens na Tela
@@ -767,7 +847,7 @@ static  void  App_TaskStart (void  *p_arg)
 				 (CPU_TS		*) 0,
 				 (OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
 				 (OS_ERR	    *)&err_os);
-
+				 
 	//Cria Semaforo nave
 	OSSemCreate(&SemaforoShipPos,"Semaforo Pos Nave",1,&err_os);
 	//Cria Semaforo Labirinto
@@ -802,6 +882,7 @@ static  void  App_TaskStart (void  *p_arg)
 				  (OS_ERR	*)&err_os);
 		
 		Enemy[j] = 3;
+		EnemyCount++;
 
 		OSSemPost((OS_SEM	*)&SemaforoEnemy,
 				   OS_OPT_POST_1,
@@ -822,13 +903,27 @@ static  void  App_TaskStart (void  *p_arg)
 		OSTimeDly(20, OS_OPT_TIME_DLY, &err_os);
 		j++;
 	}
+	OSTaskCreate((OS_TCB		*)&TaskInicioTCB,
+				 (CPU_CHAR		*)"TaskInicio",
+				 (OS_TASK_PTR	 ) TaskInicio,
+				 (void			*) 0,
+				 (OS_PRIO		 ) 10,
+				 (CPU_STK		*)&TaskInicioStk[0],
+				 (CPU_STK_SIZE   ) TSKINICIO_STK_SIZE / 10u,
+				 (CPU_STK_SIZE	 ) TSKINICIO_STK_SIZE,
+				 (OS_MEM_QTY	 ) 0u,
+				 (OS_TICK		 ) 0u,
+				 (CPU_TS		*) 0,
+				 (OS_OPT		 ) (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+				 (OS_ERR	    *)&err_os);
+	
 
 	printf("\n Inicio do loop de msg");
 
     // Loop de mensagens para interface grafica
     while (1)
    		 {
-			 if (Life > 0){
+			 if ((GameStatus == 0) && (Life > 0)){
 				 OSSemPend((OS_SEM		*)&SemaforoTela,
 						  (OS_TICK		*) 0,
 						  OS_OPT_PEND_BLOCKING,
@@ -840,16 +935,26 @@ static  void  App_TaskStart (void  *p_arg)
 						OS_OPT_POST_1,
 						(OS_ERR		*)&err_os);
 			 }
-			 if (EnemyCount == 0) {
+			 if ((GameStatus == 0) && (EnemyCount == 0)) {
 				OSTimeDly(200, OS_OPT_TIME_DLY, &err_os);
 				OSTaskDel((OS_TCB *)&TaskTelaTcb,(OS_ERR *)&err_os);
 				DeleteObject(fundo);
 				fundo = GUI_CreateImage( "win.bmp", 780, 556);
-				GUI_DrawImage(fundo,0,0,780 ,556,5);
+				 OSSemPend((OS_SEM		*)&SemaforoTela,
+						  (OS_TICK		*) 0,
+						  OS_OPT_PEND_BLOCKING,
+						  (CPU_TS		*) 0,
+						  (OS_ERR		*)&err_os);
+
+				 GUI_DrawImage(fundo,0,0,780 ,556,5);
 				itoa(Score,sScore,10);
 				GUI_DrawText(sScore,20,65,505,RGB(128,0,0),RGB(128,128,128));
 				itoa(Life,sLife,10);
 				GUI_DrawText(sLife,20,700,505,RGB(128,0,0),RGB(128,128,128));
+
+				OSSemPost((OS_SEM		*)&SemaforoTela,
+						OS_OPT_POST_1,
+						(OS_ERR		*)&err_os);
 				OSTimeDly(1000, OS_OPT_TIME_DLY, &err_os);
 			 }
 			 PeekMessage(&Msg, 0, 0, 0, PM_REMOVE);
@@ -893,6 +998,8 @@ LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			  // ...
 				Shot(1);
 				GameStatus = 0;
+				OSTaskDel(&TaskInicioTCB,&err_os);
+		
 			  break;
 
 			case VK_F2:
@@ -929,12 +1036,38 @@ LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 							  (OS_ERR		*)&err_os);
 					imgYPos-=20;
 				}
+				else
+				{
+					if (Level >0){
+						Level--;
+						OSTimeDly(80, OS_OPT_TIME_DLY, &err_os);
+					}
+					else
+					{
+						Level = 2;
+						OSTimeDly(80, OS_OPT_TIME_DLY, &err_os);
+					}
+				}
 			  break;
 
 			case VK_DOWN:
 			  // Insert code here to process the DOWN ARROW key
 			  // ...
 				imgYPos+=20;
+				if (GameStatus ==1){
+					{
+						if (Level < 2){
+							Level++;
+							OSTimeDly(80, OS_OPT_TIME_DLY, &err_os);
+						}
+						else
+						{
+							Level = 0;
+							OSTimeDly(80, OS_OPT_TIME_DLY, &err_os);
+						}
+					}
+				}
+
 			  break;
 
 			case VK_DELETE:
