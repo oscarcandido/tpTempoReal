@@ -45,11 +45,11 @@
 #define TSKSHOT_STK_SIZE 2000
 #define TSKMOVENE_STK_SIZE 2000
 #define TSKENSHOT_STK_SIZE 2000
-#define NumEnemy 7
-#define Linhas 38
-#define Colunas 23
-#define LinhaNave 21
-#define EnemyLine 5
+#define NumEnemy 7  //número de inimigos
+#define Linhas 38 // número de linhas no labrinto
+#define Colunas 23 // número de colunas no labirinto
+#define LinhaNave 21 //Linha onde a nave se movimenta
+#define EnemyLine 5 // linha limite até onde inimigos são criados aleatóriamente
 /*
 *********************************************************************************************************
 *                                           LOCAL CONSTANTS
@@ -93,32 +93,31 @@ static  CPU_STK  TaskMoveEnemyStk[NumEnemy][TSKMOVENE_STK_SIZE];
 static  OS_TCB	 TaskEnShotTCB[NumEnemy];
 static  CPU_STK	 TaskEnShotStk[NumEnemy][TSKENSHOT_STK_SIZE];
 //Semáforos
-static	OS_SEM	 SemaforoTela;
-static  OS_SEM	 SemaforoShipPos;
-static  OS_SEM	 SemaforoLabrinto;
-static	OS_SEM   SemaforoEnemyCount;
-static	OS_SEM	 SemaforoPosEnemy;
-static  OS_SEM   SemaforoEnemy;
-static  OS_SEM   SemaForoEnemyPos;
+static	OS_SEM	 SemaforoTela;  //Controla acesso a tela
+static  OS_SEM	 SemaforoShipPos;//Controla acesso à posição da nave
+static  OS_SEM	 SemaforoLabrinto;//Controla acesso à matriz de posições
+static	OS_SEM   SemaforoEnemyCount;//Controla acesso à variável contadora de inimigos
+static  OS_SEM   SemaforoEnemy; //Controla acesso às variáveis dos inimigos 
+static  OS_SEM   SemaForoEnemyPos; //Controla acesso às variáveis de posição dos inimigos
 // imagens usadas no programa
-HBITMAP * fundo;
-HBITMAP * ship;
-HBITMAP * enemy;
-HBITMAP * missil;
-HBITMAP * EnShot;
-HBITMAP * GameOver;
+HBITMAP * fundo; //imagem de fundo
+HBITMAP * ship;//imagem da nave
+HBITMAP * enemy;//imagem do inimigo
+HBITMAP * missil;//imagem do tiro da nave
+HBITMAP * EnShot;//imagem do tiro do inimigo
+HBITMAP * GameOver;//imagem de fim de jogo
 //Variáveis globais
 int imgXPos, imgYPos;
-int ShipPos = 1;
-int EnemyCount;
-int xEnemy[NumEnemy];
-int yEnemy[NumEnemy];
-int Enemy[NumEnemy];
-int EnemyDly = 6000;
-int EnShotDly = 30;
-int GameStatus = 1;
-int Score = 0;
-int Life = 3;
+int ShipPos = 1; //Posição da nave na tela
+int EnemyCount; // Número de inimigos vivos 
+int xEnemy[NumEnemy]; // posição x dos inimigos
+int yEnemy[NumEnemy];// posição y dos inimigos
+int Enemy[NumEnemy];//inimigos
+int EnemyDly = 6000; //delay para descida dos inimigos
+int EnShotDly = 30; //intervalo para cada tiro do inimigo
+int GameStatus = 1; //estado do jogo se 1 jogo iniciando
+int Score = 0;//pontuação do jogador
+int Life = 3;// número de vidas do jogador
 /*
 *********************************************************************************************************
 *********************************************************************************************************/
@@ -207,13 +206,13 @@ extern MSG Msg;
 *********************************************************************************************************
 */
 
-static  void  App_TaskStart (void  *p_arg);
-static  void  TaskTela(void *p_arg);
-static	void  MoveShip(int dir);
-static	void  Shot(int pos);
-static  void  TaskEnemy(void *p_arg);
-static	void  EnemyShot(void *p_arg);
-static	void  MoveEnemy(void *p_arg);
+static  void  App_TaskStart (void  *p_arg); 
+static  void  TaskTela(void *p_arg); //Tarefa de impressão dos itens na tela
+static	void  MoveShip(int dir);//Movimenta a nave na tela
+static	void  Shot(int pos);//Tiro da nave
+static  void  TaskEnemy(void *p_arg);//Tarefa dos inimigos
+static	void  EnemyShot(void *p_arg);//Tiro do inimigo
+static	void  MoveEnemy(void *p_arg);//Movimenta os inimigos
 LRESULT CALLBACK HandleGUIEvents(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
@@ -288,7 +287,7 @@ static void TaskTela(void *p_arg){
 	char sLife[5];
 	OS_ERR err_os;
 	while (1){ 
-		if (Life <= 0){
+		if (Life <= 0){ //se acabaram as vidas do jogador, imprime a tela de fim de jogo
 			OSSemPend((OS_SEM		*)&SemaforoTela,
 					  (OS_TICK		*) 0,
 					  OS_OPT_PEND_BLOCKING,
@@ -312,7 +311,7 @@ static void TaskTela(void *p_arg){
 			OSTimeDly(1000, OS_OPT_TIME_DLY, &err_os);
 		}
 
-		while(Life >0){
+		while(Life >0){ //enquanto houverem vidas do jogador
 		ship = GUI_CreateImage("nave.bmp",60,60);
 		DeleteObject(enemy);
 		enemy = GUI_CreateImage("inimigo.bmp",60,20);
@@ -327,9 +326,9 @@ static void TaskTela(void *p_arg){
 				  (CPU_TS		*) 0,
 				  (OS_ERR		*)&err_os);
 		itoa(Score,sScore,10);
-		GUI_DrawText(sScore,20,65,505,RGB(128,0,0),RGB(128,128,128));
+		GUI_DrawText(sScore,20,65,505,RGB(128,0,0),RGB(128,128,128)); //Escreve a pontuação do jogador
 		itoa(Life,sLife,10);
-		GUI_DrawText(sLife,20,700,505,RGB(128,0,0),RGB(128,128,128));
+		GUI_DrawText(sLife,20,700,505,RGB(128,0,0),RGB(128,128,128));//Escreve o número de vidas do Jogador
 		EnemyCount = 0;
 		for (i = 0;i< Linhas;i++){
 			for (j = 0;j < Colunas;j++){
@@ -339,14 +338,14 @@ static void TaskTela(void *p_arg){
 						 (CPU_TS		*) 0,
 						 (OS_ERR        *)&err_os);
 				switch (LABIRINTO[i][j]) {
-				case 1 : GUI_DrawImage(ship,i * 20,LinhaNave*20,60,60,1);
+				case 1 : GUI_DrawImage(ship,i * 20,LinhaNave*20,60,60,1);//desenha nave
 					break;
-				case 2 : GUI_DrawImage(missil,i * 20,j*20,60,20,1);
+				case 2 : GUI_DrawImage(missil,i * 20,j*20,60,20,1);//desenha tiro da nave
 					break;
-				case 3 : GUI_DrawImage(enemy,i * 20,j*20,60,20,1);
+				case 3 : GUI_DrawImage(enemy,i * 20,j*20,60,20,1);//desenha inimigo
 					EnemyCount ++;
 					break;
-				case 4 : GUI_DrawImage(EnShot,i * 20,j*20,60,20,1);
+				case 4 : GUI_DrawImage(EnShot,i * 20,j*20,60,20,1);//desenha tiro do inimigo
 					break;
 				}
 				OSSemPost((OS_SEM		*)&SemaforoLabrinto,
@@ -392,9 +391,9 @@ static  void MoveShip(int dir){
 			 OS_OPT_PEND_BLOCKING,
 			 (CPU_TS		*) 0,
 			 (OS_ERR        *)&err_os);
-	if (LABIRINTO[ShipPos + dir][LinhaNave] != 5){
+	if (LABIRINTO[ShipPos + dir][LinhaNave] != 5){//se a nave ainda está dentro da área  livre
 		LABIRINTO[ShipPos][LinhaNave] = 0;
-		ShipPos = ShipPos + dir;
+		ShipPos = ShipPos + dir; //movimenta a nave para a posição dir
 		LABIRINTO[ShipPos][LinhaNave] = 1;
 	}
 	OSSemPost((OS_SEM		*)&SemaforoLabrinto,
@@ -428,10 +427,10 @@ static void Shot(int pos)
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
 				(OS_ERR     *)&err_os);
-	while ((LABIRINTO[pos][y-1] != 5) &&  (LABIRINTO[pos][y-1] != 3)){
-		LABIRINTO[pos][y] = 0;
-		y--;
-		LABIRINTO[pos][y] = 2;
+	while ((LABIRINTO[pos][y-1] != 5) &&  (LABIRINTO[pos][y-1] != 3)){//enquanto o tiro dentro da área válida e não atingir inimigo
+		LABIRINTO[pos][y] = 0; //apaga o tiro da posição atual
+		y--;//muda a posição do tiro
+		LABIRINTO[pos][y] = 2;//sinalisa posição do tiro
 		OSTimeDly(10, OS_OPT_TIME_DLY, &err_os);
 		OSSemPost((OS_SEM		*)&SemaforoLabrinto,
 				   OS_OPT_POST_1,
@@ -442,22 +441,27 @@ static void Shot(int pos)
 				OS_OPT_PEND_BLOCKING,
 				(CPU_TS		*) 0,
 				(OS_ERR        *)&err_os);
-	if (LABIRINTO[pos][y-1] == 3){
+/*
+*********************************************************************************************************
+* DETECTA SE UM INIMIGO FOI ATINGIDO																	*
+*********************************************************************************************************
+*/
+	if (LABIRINTO[pos][y-1] == 3){ 
 		LABIRINTO[pos][y-1] = 0;
-		for(i=0;i<NumEnemy;i++){
+		for(i=0;i<NumEnemy;i++){ //verifica qual inimigo foi atingido
 			OSSemPend((OS_SEM	*)&SemaForoEnemyPos,
 					  (OS_TICK	*)0,
 					  OS_OPT_PEND_BLOCKING,
 					  (CPU_TS	*)0,
 					  (OS_ERR	*)&err_os);
-			if ((xEnemy[i] == pos) && (yEnemy[i] == (y-1))){
+			if ((xEnemy[i] == pos) && (yEnemy[i] == (y-1))){ //se o inimigo for atingido
 				OSSemPend((OS_SEM	*)&SemaforoEnemy,
 						  (OS_TICK	*)0,
 						  OS_OPT_PEND_BLOCKING,
 						  (CPU_TS	*)0,
 						  (OS_ERR	*)&err_os);
-				Enemy[i] = 0;
-				Score = Score + 100 * (Linhas - yEnemy[i]);
+				Enemy[i] = 0; //mata o inimigo
+				Score = Score + 100 * (Linhas - yEnemy[i]);//Atualiza pontuação do jogador
 				OSSemPost((OS_SEM	*)&SemaforoEnemy,
 						   OS_OPT_POST_1,
 						   (OS_ERR	*)&err_os);
@@ -497,13 +501,13 @@ static void EnemyShot(void *p_arg){
 	int x;
 	int y;
 	int j;
-	if (GameStatus == 0) {
+	if (GameStatus == 0) {//se jogo já começou
 		OSSemPend((OS_SEM	*)&SemaforoEnemy,
 					(OS_TICK	*)0,
 					OS_OPT_PEND_BLOCKING,
 					(CPU_TS	*)0,
 					(OS_ERR	*)&err_os);
-		if (Enemy[i] == 3){
+		if (Enemy[i] == 3){//Se o inimigo está vivo
 			OSSemPost((OS_SEM	*)&SemaforoEnemy,
 						OS_OPT_POST_1,
 						(OS_ERR	*)&err_os);
@@ -529,10 +533,9 @@ static void EnemyShot(void *p_arg){
 		
 					LABIRINTO[x][y] = 0;
 					y++;
-					LABIRINTO[x][y] = 4;
+					LABIRINTO[x][y] = 4;//atualiza posição do tido do inimigo
 					if ((x == ShipPos) && (y + 1 == LinhaNave)){
 						printf("\n Nave atingida");
-						//GameStatus = 1;
 						ShipPos = 1;
 						Life--;
 						OSSemPend((OS_SEM	*)&SemaforoLabrinto,
@@ -595,7 +598,6 @@ static void MoveEnemy(void *p_arg){
 	}
 	if (GameStatus == 0) { 
 		while((LABIRINTO[xEnemy[i]+1][yEnemy[i]+1] != 5) ){
-	//		OSTaskDel((OS_TCB *)&TaskEnShotTCB[i],(OS_ERR *)&err_os);
 			OSSemPend((OS_SEM	*)&SemaForoEnemyPos,
 						(OS_TICK	*)0,
 						OS_OPT_PEND_BLOCKING,
@@ -614,7 +616,7 @@ static void MoveEnemy(void *p_arg){
 						(CPU_TS	*)0,
 						(OS_ERR	*)&err_os);
 
-			LABIRINTO[xEnemy[i]][yEnemy[i]] = Enemy[i];
+			LABIRINTO[xEnemy[i]][yEnemy[i]] = Enemy[i];// se inimigo estiver vivo imprime inimigo, senão imprime espaço vazio
 
 			OSSemPost((OS_SEM	*)&SemaforoEnemy,
 						OS_OPT_POST_1,
@@ -625,7 +627,6 @@ static void MoveEnemy(void *p_arg){
 			OSSemPost((OS_SEM	*)&SemaForoEnemyPos,
 						OS_OPT_POST_1,
 						(OS_ERR	*)&err_os);
-		//	OSTimeDly(100, OS_OPT_TIME_DLY, &err_os);
 			OSTaskCreate((OS_TCB     *)&TaskEnShotTCB[i],  
 							(CPU_CHAR   *)"Task Enemy Shot",
 							(OS_TASK_PTR ) EnemyShot,
